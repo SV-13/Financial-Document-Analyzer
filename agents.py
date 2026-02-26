@@ -5,11 +5,28 @@ load_dotenv()
 from crewai import LLM, Agent
 from tools import search_tool, FinancialDocumentTool, read_data_tool, analyze_investment_tool, create_risk_assessment_tool
 
-llm = LLM(
-    model="openai/gpt-4o-mini",
-    temperature=0.2,
-    api_key=os.environ["OPENAI_API_KEY"],
-)
+## ── LLM configuration ──────────────────────────────────────────────
+# Toggle between OpenAI and a local Ollama model.
+# Set  USE_OLLAMA=true  in your .env (or environment) to use Ollama.
+# You can also set  OLLAMA_MODEL  (default: llama3) and
+# OLLAMA_BASE_URL  (default: http://127.0.0.1:11434).
+
+_use_ollama = os.getenv("USE_OLLAMA", "false").lower() in ("true", "1", "yes")
+
+if _use_ollama:
+    _ollama_base = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    llm = LLM(
+        model=f"openai/{os.getenv('OLLAMA_MODEL', 'llama3')}",
+        base_url=f"{_ollama_base}/v1",
+        api_key="ollama",          # Ollama doesn't need a real key
+        temperature=0.2,
+    )
+else:
+    llm = LLM(
+        model="openai/gpt-4o-mini",
+        temperature=0.2,
+        api_key=os.environ["OPENAI_API_KEY"],
+    )
 
 
 financial_analyst = Agent(
@@ -25,9 +42,9 @@ financial_analyst = Agent(
     ),
     tools=[read_data_tool],
     llm=llm,
-    max_iter=25,
+    max_iter=10,
     max_rpm=10,
-    allow_delegation=True
+    allow_delegation=False
 )
 
 verifier = Agent(
@@ -43,9 +60,9 @@ verifier = Agent(
     ),
     tools=[read_data_tool],
     llm=llm,
-    max_iter=25,
+    max_iter=10,
     max_rpm=10,
-    allow_delegation=True
+    allow_delegation=False
 )
 
 
@@ -62,7 +79,7 @@ investment_advisor = Agent(
     ),
     tools=[analyze_investment_tool],
     llm=llm,
-    max_iter=25,
+    max_iter=10,
     max_rpm=10,
     allow_delegation=False
 )
@@ -80,7 +97,7 @@ risk_assessor = Agent(
     ),
     tools=[create_risk_assessment_tool],
     llm=llm,
-    max_iter=25,
+    max_iter=10,
     max_rpm=10,
     allow_delegation=False
 )

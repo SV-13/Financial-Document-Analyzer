@@ -27,6 +27,16 @@ OPENAI_API_KEY=your-openai-api-key-here
 ```
 Make sure your OpenAI account has **active billing enabled** — a free-tier or expired key will hit quota errors immediately.
 
+#### Using Ollama (free, local LLM — no API key needed)
+
+Instead of OpenAI, you can use [Ollama](https://ollama.com) to run models locally (or on a LAN machine). Add these to your `.env`:
+```
+USE_OLLAMA=true
+OLLAMA_MODEL=llama3
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+```
+> **Note:** The FastAPI multi-agent pipeline (`main.py`) works best with OpenAI. For Ollama, use the standalone script `run_analysis.py` (see below) — smaller models struggle with CrewAI's tool-calling format.
+
 ### 4. Add a financial document
 Place a PDF at `data/sample.pdf`, or upload one through the API later.
 
@@ -40,7 +50,19 @@ python main.py
 ```
 Runs at `http://localhost:8000` (port 8000).
 
-### 6. (Optional) Queue mode with Celery + Redis
+### 6. (Optional) Standalone analysis with Ollama
+
+If you're using Ollama (local or on a LAN machine), `run_analysis.py` talks to the model directly without CrewAI's tool-calling overhead:
+
+```sh
+python run_analysis.py                                    # uses data/sample.pdf
+python run_analysis.py data/report.pdf                    # custom PDF
+python run_analysis.py data/report.pdf "What is the EPS?" # custom PDF + query
+```
+
+This script reads the PDF, then runs four analysis stages (verify → analyze → advise → risk) in sequence with a single LLM chat call each.
+
+### 7. (Optional) Queue mode with Celery + Redis
 
 Requires port **6379** (Redis) and **8000** (API server). Ensure these ports are available.
 If Redis is running, jobs get dispatched to a background worker automatically. If not, the server just runs everything synchronously — no config changes needed.
@@ -198,6 +220,47 @@ Lists analysis tasks, optionally filtered by status. Returns task_id, status, qu
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `OPENAI_API_KEY` | — | Required. Your OpenAI API key |
+| `OPENAI_API_KEY` | — | Required when using OpenAI. Your OpenAI API key |
+| `USE_OLLAMA` | `false` | Set to `true` to use Ollama instead of OpenAI |
+| `OLLAMA_MODEL` | `llama3` | Ollama model name (e.g. `llama3`, `mistral`) |
+| `OLLAMA_BASE_URL` | `http://127.0.0.1:11434` | Ollama server address |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection for Celery (optional) |
 | `DATABASE_URL` | `sqlite:///financial_analyzer.db` | Database connection string |
+
+---
+
+## Sample Analysis Output
+
+Analyzed **Tesla Q2 2025 Quarterly Update** (`data/sample.pdf`) using Ollama llama3:
+
+### Verification
+> **VERIFIED** — The document is confirmed as a legitimate Tesla quarterly financial filing with income statements, balance sheets, and operational summaries.
+
+### Key Financial Metrics
+
+| Metric | Value |
+|--------|-------|
+| Total Revenue | $22.5B (↓ 12% YoY) |
+| Operating Income | $0.9B (↓ 42% YoY) |
+| Operating Margin | 4.1% |
+| GAAP Gross Margin | 17.2% |
+| Adjusted EBITDA Margin | 15.1% |
+| Operating Cash Flow | $2.5B |
+| Free Cash Flow | $0.1B |
+| Cash & Investments | $36.8B |
+| GAAP EPS | $0.33 |
+| Non-GAAP EPS | $0.40 |
+
+### Financial Analysis Summary
+
+- **Revenue** declined 12% YoY driven by lower vehicle deliveries, reduced regulatory credit revenue, and lower average selling prices
+- **Operating income** down 42% YoY due to higher R&D spend (AI projects), declining deliveries, and increased stock-based compensation
+- **Strengths**: Growth in Services & Other revenue, increasing Energy Generation & Storage gross profit, Robotaxi launch in Austin
+- **Weaknesses**: Declining vehicle deliveries, lower regulatory credit revenue, compressed margins
+
+### Investment Recommendation: HOLD
+
+- Company is transitioning into AI, robotics, and autonomous services — long-term growth potential
+- Near-term pressure from declining core auto metrics
+- **Risk Rating: Medium** — strong liquidity ($36.8B cash) mitigates downside, but execution risk on new ventures is meaningful
+- **Mitigation**: Monitor regulatory credit trends, track Robotaxi and Semi/Cybercab production milestones, diversify exposure

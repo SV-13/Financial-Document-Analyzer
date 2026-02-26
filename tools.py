@@ -48,7 +48,11 @@ class FinancialDocumentTool:
 
 @tool("Analyze Investment Data")
 def analyze_investment_tool(financial_document_data: str) -> str:
-    """Cleans up financial text data by stripping extra whitespace."""
+    """Takes a string of financial text and cleans up extra whitespace. Pass the full text content directly as a string."""
+    # llama3 sometimes passes a dict instead of a string — handle gracefully
+    if isinstance(financial_document_data, dict):
+        financial_document_data = str(financial_document_data)
+
     processed_data = financial_document_data
 
     i = 0
@@ -63,5 +67,9 @@ def analyze_investment_tool(financial_document_data: str) -> str:
 
 @tool("Create Risk Assessment")
 def create_risk_assessment_tool(financial_document_data: str) -> str:
-    """Takes financial doc text and returns a basic risk summary."""
+    """Takes a string of financial text and returns a basic risk summary. Pass the full text content directly as a string."""
+    # llama3 sometimes passes a dict instead of a string — handle gracefully
+    if isinstance(financial_document_data, dict):
+        financial_document_data = str(financial_document_data)
+
     return f"Risk assessment for provided financial data:\n{financial_document_data[:500]}"
